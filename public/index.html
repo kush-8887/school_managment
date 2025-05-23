@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>School Management</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    h1, h2 { color: #333; }
+    form { margin-bottom: 1.5rem; }
+    input, button { padding: 0.5rem; margin: 0.25rem 0; width: 100%; box-sizing: border-box; }
+    ul { list-style: none; padding: 0; }
+    li { background: #f9f9f9; margin-bottom: 0.5rem; padding: 0.5rem; border-radius: 4px; }
+    .distance { font-size: 0.9rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Add School</h1>
+  <form id="addSchoolForm">
+    <input type="text" placeholder="Name" name="name" required />
+    <input type="text" placeholder="Address" name="address" required />
+    <input type="number" placeholder="Latitude" name="latitude" step="any" required />
+    <input type="number" placeholder="Longitude" name="longitude" step="any" required />
+    <button type="submit">Add School</button>
+  </form>
+
+  <hr>
+
+  <h2>Find Schools Nearby</h2>
+  <p>If use my location dosen't work, please enter latitude and longitude manually.</p>
+    <p>or use this delhi- latitude: 28.6139, longitude: 77.2090</p>
+  <form id="findSchoolsForm">
+    <input type="number" placeholder="Your Latitude" id="userLat" step="any" required />
+    <input type="number" placeholder="Your Longitude" id="userLon" step="any" required />
+    <button type="button" onclick="getLocation()">Use My Location</button>
+    <button type="submit">Find</button>
+  </form>
+
+  <ul id="schoolList"></ul>
+
+  <script>
+    // Use My Location
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            document.getElementById('userLat').value = position.coords.latitude.toFixed(6);
+            document.getElementById('userLon').value = position.coords.longitude.toFixed(6);
+          },
+          (error) => {
+            alert('Error getting location: ' + error.message);
+          }
+        );
+      } else {
+        alert('Geolocation is not supported by your browser.');
+      }
+    }
+
+    // Add School
+    document.getElementById('addSchoolForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const { name, address, latitude, longitude } = e.target;
+      const payload = {
+        name: name.value.trim(),
+        address: address.value.trim(),
+        latitude: latitude.value,
+        longitude: longitude.value
+      };
+      const res = await fetch('/api/addSchool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      alert(data.message || data.error);
+      e.target.reset();
+    };
+
+    // Find Schools
+    document.getElementById('findSchoolsForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const lat = document.getElementById('userLat').value;
+      const lon = document.getElementById('userLon').value;
+      const res = await fetch(`/api/listSchools?latitude=${lat}&longitude=${lon}`);
+      const schools = await res.json();
+      const list = document.getElementById('schoolList');
+      list.innerHTML = '';
+
+      if (Array.isArray(schools) && schools.length) {
+        schools.forEach(({ name, address, distance }) => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <strong>${name}</strong><br>
+            ${address}<br>
+            <span class="distance">Distance: ${distance} km</span>
+          `;
+          list.appendChild(li);
+        });
+      } else {
+        list.innerHTML = '<li>No schools found nearby.</li>';
+      }
+    };
+  </script>
+</body>
+</html>
